@@ -7,17 +7,20 @@ import {
   // deleteUser,
   // getDashboardStats,
   // manageOrders
-} from '../controllers/admin.controller';
+} from '../controllers/adminController';
 
 const router = express.Router();
 
-// Protected admin routes
-router.use(auth, isAdmin);
+// Middleware to protect all admin routes
+// router.use(isAdmin);
 
+// User management routes
 router.get('/users', getAllUsers);
 // router.get('/users/:id', getUserById);
 // router.patch('/users/:id/role', updateUserRole);
 // router.delete('/users/:id', deleteUser);
+
+// Dashboard and order management routes
 // router.get('/dashboard/stats', getDashboardStats);
 // router.get('/orders', manageOrders);
 

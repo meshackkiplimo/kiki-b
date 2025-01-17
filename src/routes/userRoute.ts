@@ -10,7 +10,7 @@ import {
 //   addToCart,
 //   removeFromCart,
 //   getCart
-} from '../controllers/user.controller';
+} from '../controllers/userController';
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ router.post('/register', register);
 router.post('/login', login);
 
 // Protected user routes
-router.use(auth);
+// router.use(auth);
 router.get('/profile', getProfile);
 // router.patch('/profile', updateProfile);
 // router.get('/orders', getOrders);

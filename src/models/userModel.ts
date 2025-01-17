@@ -6,6 +6,10 @@ export interface IUser extends Document {
   password: string;
   name: string;
   role: 'user' | 'admin';
+  createdAt: Date; // Account creation date
+  updatedAt: Date; // Account last updated date
+  
+  
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 

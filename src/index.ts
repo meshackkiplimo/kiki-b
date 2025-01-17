@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db';
+import userRoutes from './routes/userRoute';
+import adminRoutes from './routes/adminRoutes';
 
 dotenv.config();
 
@@ -16,6 +18,11 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({ message: 'E-commerce API is running' });
 });
+
+// api route
+app.use("/api/user", userRoutes);
+app.use("/api/admin", adminRoutes);
+
 
 // Connect to database
 connectDB();
