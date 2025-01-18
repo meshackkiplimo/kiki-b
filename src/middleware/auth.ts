@@ -1,36 +1,50 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { body,  } from "express-validator";
 
-// Extend the Express Request interface to include the user property
+const JWT_SECRET = process.env.JWT_SECRET || "weri";
+
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        _id: string;
-        role?: string;
-      };
+      user?: any;
     }
   }
 }
 
-export const auth = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(" ")[1];
+
     if (!token) {
-      return res.status(401).json({ message: 'No token, authorization denied' });
+      return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string; role?: string };
-    req.user = decoded; // Assign the decoded token to req.user
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Please authenticate' });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: 'Admin access required' });
+// export const validateSignup = [
+//   body("email").isEmail().normalizeEmail().withMessage("Invalid email"),
+//   body("password").isLength({ min: 6 }).withMessage("Password too short"),
+//   body("name").trim().notEmpty().withMessage("Name is required")
+// ];
+
+export const validateLogin = [
+  body("email").isEmail().normalizeEmail(),
+  body("password").notEmpty()
+];
+
+export const validateCheckoutRequestId = (req: Request, res: Response, next: NextFunction) => {
+  const { CheckoutRequestID } = req.body;
+  
+  if (!CheckoutRequestID || typeof CheckoutRequestID !== "string" || !CheckoutRequestID.trim()) {
+    return res.status(400).json({ error: "Valid CheckoutRequestID is required" });
   }
+  
   next();
 };

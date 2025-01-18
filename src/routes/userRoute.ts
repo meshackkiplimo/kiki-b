@@ -1,31 +1,17 @@
-import express from 'express';
-import { auth } from '../middleware/auth';
-import {
-  register,
-  login,
-  getProfile,
-//   updateProfile,
-//   getOrders,
-//   createOrder,
-//   addToCart,
-//   removeFromCart,
-//   getCart
-} from '../controllers/userController';
+import express from "express";
+import { login, signup } from "../controllers/userController";
+// import { validateLogin } from "../middleware/authMiddleware";
+// import rateLimit from "express-rate-limit";
 
 const router = express.Router();
 
-// Public routes
-router.post('/register', register);
-router.post('/login', login);
+// const loginLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 5, // 5 attempts per window
+//   message: "Too many login attempts. Please try again later."
+// });
 
-// Protected user routes
-// router.use(auth);
-router.get('/profile', getProfile);
-// router.patch('/profile', updateProfile);
-// router.get('/orders', getOrders);
-// router.post('/orders', createOrder);
-// router.get('/cart', getCart);
-// router.post('/cart', addToCart);
-// router.delete('/cart/:productId', removeFromCart);
+router.post("/signup", signup);
+router.post("/login",   login);
 
 export default router;
