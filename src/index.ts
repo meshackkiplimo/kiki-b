@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db';
 import userRoutes from './routes/userRoute';
+import carRoutes from './routes/carRoute';
 // s
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.get('/', (req, res) => {
 
 // api rout
 app.use("/api/user", userRoutes);
+app.use("/api/cars", carRoutes);
 // app.use("/api/admin", adminRoutes);
 
 
