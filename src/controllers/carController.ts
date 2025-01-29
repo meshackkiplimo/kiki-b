@@ -12,47 +12,79 @@ export const createCar = async (req: Request, res: Response) => {
       return 
     }
 
-    // Destructure fields from request body
-    const { type, plate, modelName, seats, mileage, year, carType } = req.body;
+    const { type, plate} = req.body;
 
     // Check if the car with the same plate already exists
     const existingCar = await Car.findOne({ plate });
     if (existingCar) {
       res.status(409).json({ message: 'Car with this plate already exists' });
-    }
       return 
+    }
 
-    // Create a new car
+    // Create a new car with all required fields
     const newCar = new Car({
       type,
       plate,
-      modelName,
-      seats,
-      mileage,
-      year,
-      carType,
+      
     });
 
-    await newCar.save(); // Save the new car to the database
-
-    // Send success response
+    await newCar.save();
     res.status(201).json({
       message: 'Car created successfully',
       car: newCar,
     });
-  } catch (error:any) {
+    console.log("this is the real car")
+    console.log({type, plate})
+
+    return 
+  } catch (error: any) {
     console.error('Car creation error:', error);
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ 
+        message: 'Validation error', 
+        errors: Object.keys(error.errors).reduce((acc: any, key) => {
+          acc[key] = error.errors[key].message;
+          return acc;
+        }, {})
+      });
+      return 
+    }
     res.status(500).json({ message: 'Internal server error', error: error.message });
+    return 
   }
 };
-// Get all cars
-export const getCars = async (_req: Request, res: Response) => {
+
+// Get all cars with pagination and filtering
+export const getCars = async (req: Request, res: Response) => {
   try {
-    const cars = await Car.find().sort({ createdAt: -1 }); // Sort by most recently created
-    res.status(200).json(cars);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const sort = (req.query.sort as string) || '-createdAt';
+    
+    // Build filter object from query parameters
+    const filter: any = {};
+    if (req.query.type) filter.type = req.query.type;
+    if (req.query.carType) filter.carType = req.query.carType;
+    if (req.query.year) filter.year = req.query.year;
+
+    const cars = await Car.find(filter)
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const total = await Car.countDocuments(filter);
+    res.status(200).json({
+      cars,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalCars: total
+    });
+
+    return 
   } catch (error) {
     console.error("Error fetching cars:", error);
     res.status(500).json({ message: "Internal server error" });
+    return 
   }
 };
 
@@ -61,7 +93,6 @@ export const getCarById = async (req: Request, res: Response) => {
   try {
     const { id: carId } = req.params;
 
-    // Validate ID format
     if (!carId.match(/^[0-9a-fA-F]{24}$/)) {
       res.status(400).json({ message: "Invalid car ID format" });
       return 
@@ -71,13 +102,14 @@ export const getCarById = async (req: Request, res: Response) => {
     if (!car) {
       res.status(404).json({ message: "Car not found" });
       return 
-
     }
 
-    res.status(200).json(car);
+res.status(200).json(car);
+    return 
   } catch (error) {
     console.error("Error fetching car:", error);
     res.status(500).json({ message: "Internal server error" });
+    return 
   }
 };
 
@@ -85,18 +117,29 @@ export const getCarById = async (req: Request, res: Response) => {
 export const updateCar = async (req: Request, res: Response) => {
   try {
     const { id: carId } = req.params;
-    const { type, plate, modelName, seats, mileage, year, carType } = req.body;
+    const updates = req.body;
 
-    // Validate ID format
     if (!carId.match(/^[0-9a-fA-F]{24}$/)) {
       res.status(400).json({ message: "Invalid car ID format" });
       return 
     }
 
+    // Check if updating plate number and if it already exists
+    if (updates.plate) {
+      const existingCar = await Car.findOne({ 
+        plate: updates.plate,
+        _id: { $ne: carId }
+      });
+      if (existingCar) {
+        res.status(409).json({ message: 'Car with this plate already exists' });
+        return 
+      }
+    }
+
     const updatedCar = await Car.findByIdAndUpdate(
       carId,
-      { type, plate, modelName, seats, mileage, year, carType },
-      { new: true, runValidators: true } // Return updated car and apply validations
+      { $set: updates },
+      { new: true, runValidators: true }
     );
 
     if (!updatedCar) {
@@ -108,9 +151,21 @@ export const updateCar = async (req: Request, res: Response) => {
       message: "Car updated successfully",
       car: updatedCar,
     });
-  } catch (error) {
+    return 
+  } catch (error: any) {
     console.error("Error updating car:", error);
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ 
+        message: 'Validation error', 
+        errors: Object.keys(error.errors).reduce((acc: any, key) => {
+          acc[key] = error.errors[key].message;
+          return acc;
+        }, {})
+      });
+      return 
+    }
     res.status(500).json({ message: "Internal server error" });
+    return 
   }
 };
 
@@ -119,7 +174,6 @@ export const deleteCar = async (req: Request, res: Response) => {
   try {
     const { id: carId } = req.params;
 
-    // Validate ID format
     if (!carId.match(/^[0-9a-fA-F]{24}$/)) {
       res.status(400).json({ message: "Invalid car ID format" });
       return 
@@ -130,13 +184,15 @@ export const deleteCar = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Car not found" });
       return 
     }
-
     res.status(200).json({
       message: "Car deleted successfully",
       car: deletedCar,
     });
+
+    return 
   } catch (error) {
     console.error("Error deleting car:", error);
     res.status(500).json({ message: "Internal server error" });
+    return 
   }
 };

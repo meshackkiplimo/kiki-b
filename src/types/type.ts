@@ -10,10 +10,6 @@ export interface Car{
 
   type: string;
   plate: string;
-  model: string;
-  seats: number;
-  mileage: number;
-  year: number;
-  carType: string;
+  
 
 }
