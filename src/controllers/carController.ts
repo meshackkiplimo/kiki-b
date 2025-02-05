@@ -12,7 +12,7 @@ export const createCar = async (req: Request, res: Response) => {
       return 
     }
 
-    const { type, plate} = req.body;
+    const { type, plate,model,color,milage} = req.body;
 
     // Check if the car with the same plate already exists
     const existingCar = await Car.findOne({ plate });
@@ -25,6 +25,9 @@ export const createCar = async (req: Request, res: Response) => {
     const newCar = new Car({
       type,
       plate,
+      model,
+      color,
+      milage
       
     });
 
