@@ -6,10 +6,18 @@ export interface IUser {
   createdAt: Date; // Account creation date
   updatedAt: Date; // Account last updated date
 }
-export interface Car{
+// export interface Car{
 
-  type: string;
-  plate: string;
+//   brand: string;
+//   plate: string;
+  
+//   model: string;
+//   color: string;
+//   milage: number;
+//   price: number;
+//   year: number;
+//   fuel: string;
+//   capacity: number;
   
 
-}
+// }
