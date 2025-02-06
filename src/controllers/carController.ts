@@ -12,7 +12,7 @@ export const createCar = async (req: Request, res: Response) => {
       return 
     }
 
-    const { type, plate,model,color,milage} = req.body;
+    const { brand, plate,model,color,milage,price,capacity,fuel,year} = req.body;
 
     // Check if the car with the same plate already exists
     const existingCar = await Car.findOne({ plate });
@@ -23,11 +23,15 @@ export const createCar = async (req: Request, res: Response) => {
 
     // Create a new car with all required fields
     const newCar = new Car({
-      type,
+      brand,
       plate,
       model,
       color,
-      milage
+      milage,
+      price,
+      capacity,
+      fuel,
+      year,
       
     });
 
@@ -37,7 +41,7 @@ export const createCar = async (req: Request, res: Response) => {
       car: newCar,
     });
     console.log("this is the real car")
-    console.log({type, plate})
+    console.log({brand, plate})
 
     return 
   } catch (error: any) {
