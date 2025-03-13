@@ -1,6 +1,17 @@
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import Car from "../models/carModel";
+import { v2 as cloudinary } from 'cloudinary';
+import dotenv from 'dotenv';
+import fs from 'fs';
+
+dotenv.config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Create a new car
 export const createCar = async (req: Request, res: Response) => {
@@ -12,7 +23,30 @@ export const createCar = async (req: Request, res: Response) => {
       return 
     }
 
-    const { brand, plate,model,color,milage,price,capacity,fuel,year} = req.body;
+    const { brand, plate, model, color, milage, price, capacity, fuel, year } = req.body;
+    let imageUrl = req.body.imageUrl; // Existing URL if no new file
+    
+    if (req.file) { // Multer provides req.file for uploaded image
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'car/profiles',
+          width: 150,
+          height: 150,
+        });
+        imageUrl = uploadResult.secure_url;
+        
+        // Clean up the temp file after upload
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting temp file:', err);
+        });
+        
+        console.log('Uploaded Image to Cloudinary:', imageUrl);
+      } catch (uploadError: any) {
+        console.error('Cloudinary Upload Error:', uploadError.message);
+        res.status(500).json({ message: 'Failed to upload image', error: uploadError.message });
+        return 
+      }
+    }
 
     // Check if the car with the same plate already exists
     const existingCar = await Car.findOne({ plate });
@@ -32,7 +66,7 @@ export const createCar = async (req: Request, res: Response) => {
       capacity,
       fuel,
       year,
-      
+      imageUrl
     });
 
     await newCar.save();
@@ -40,9 +74,6 @@ export const createCar = async (req: Request, res: Response) => {
       message: 'Car created successfully',
       car: newCar,
     });
-    console.log("this is the real car")
-    console.log({brand, plate})
-
     return 
   } catch (error: any) {
     console.error('Car creation error:', error);
@@ -54,7 +85,7 @@ export const createCar = async (req: Request, res: Response) => {
           return acc;
         }, {})
       });
-      return 
+      return
     }
     res.status(500).json({ message: 'Internal server error', error: error.message });
     return 
@@ -70,9 +101,11 @@ export const getCars = async (req: Request, res: Response) => {
     
     // Build filter object from query parameters
     const filter: any = {};
-    if (req.query.type) filter.type = req.query.type;
-    if (req.query.carType) filter.carType = req.query.carType;
+    if (req.query.brand) filter.brand = req.query.brand;
+    if (req.query.model) filter.model = req.query.model;
+    if (req.query.fuel) filter.fuel = req.query.fuel;
     if (req.query.year) filter.year = req.query.year;
+    if (req.query.color) filter.color = req.query.color;
 
     const cars = await Car.find(filter)
       .sort(sort)
@@ -86,7 +119,6 @@ export const getCars = async (req: Request, res: Response) => {
       totalPages: Math.ceil(total / limit),
       totalCars: total
     });
-
     return 
   } catch (error) {
     console.error("Error fetching cars:", error);
@@ -110,11 +142,12 @@ export const getCarById = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Car not found" });
       return 
     }
-
-res.status(200).json(car);
+    res.status(200).json(car);
     return 
+    
   } catch (error) {
     console.error("Error fetching car:", error);
+
     res.status(500).json({ message: "Internal server error" });
     return 
   }
@@ -143,6 +176,27 @@ export const updateCar = async (req: Request, res: Response) => {
       }
     }
 
+    // Handle image update if there's a file
+    if (req.file) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'car/profiles',
+          width: 150,
+          height: 150,
+        });
+        updates.imageUrl = uploadResult.secure_url;
+        
+        // Clean up the temp file after upload
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting temp file:', err);
+        });
+      } catch (uploadError: any) {
+        console.error('Cloudinary Upload Error:', uploadError.message);
+        res.status(500).json({ message: 'Failed to upload image', error: uploadError.message });
+        return 
+      }
+    }
+
     const updatedCar = await Car.findByIdAndUpdate(
       carId,
       { $set: updates },
@@ -151,14 +205,13 @@ export const updateCar = async (req: Request, res: Response) => {
 
     if (!updatedCar) {
       res.status(404).json({ message: "Car not found" });
-      return 
+      return
     }
-
     res.status(200).json({
       message: "Car updated successfully",
       car: updatedCar,
     });
-    return 
+    return
   } catch (error: any) {
     console.error("Error updating car:", error);
     if (error.name === 'ValidationError') {
@@ -169,10 +222,10 @@ export const updateCar = async (req: Request, res: Response) => {
           return acc;
         }, {})
       });
-      return 
+      return
     }
-    res.status(500).json({ message: "Internal server error" });
-    return 
+     res.status(500).json({ message: "Internal server error", error: error.message });
+    return
   }
 };
 
@@ -191,11 +244,23 @@ export const deleteCar = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Car not found" });
       return 
     }
+
+    // If the car has an image on Cloudinary, delete it
+    if (deletedCar.imageUrl && deletedCar.imageUrl.includes('cloudinary')) {
+      try {
+        // Extract the public ID from the URL
+        const publicId = deletedCar.imageUrl.split('/').slice(-2).join('/').split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+        console.log('Deleted image from Cloudinary:', publicId);
+      } catch (deleteError) {
+        console.error('Error deleting image from Cloudinary:', deleteError);
+        // Continue with the response even if image deletion fails
+      }
+    }
     res.status(200).json({
       message: "Car deleted successfully",
       car: deletedCar,
     });
-
     return 
   } catch (error) {
     console.error("Error deleting car:", error);

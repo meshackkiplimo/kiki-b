@@ -8,6 +8,13 @@ import carRoutes from './routes/carRoute';
 
 dotenv.config();
 
+console.log('Environment Variables Loaded:', {
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? 'Set' : 'Missing',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Missing',
+});
+
+
 const app = express();
 const PORT = process.env.PORT || 9000;
 
