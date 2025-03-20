@@ -10,7 +10,7 @@ const carSchema = new mongoose.Schema({
   capacity:{type:Number,required:true},
   fuel:{type:String,required:true},
   year:{type:Number,required:true},
-  imageUrl:{type:String,required:false}
+  imageUrl:{type:String,required:true}
 
 });
 

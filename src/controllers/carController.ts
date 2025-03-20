@@ -16,17 +16,49 @@ cloudinary.config({
 // Create a new car
 export const createCar = async (req: Request, res: Response) => {
   try {
+    // Log incoming request data for debugging
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file);
+
     // Validate request body
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
-      return 
+      return;
     }
 
+    // Extract and validate required fields
     const { brand, plate, model, color, milage, price, capacity, fuel, year } = req.body;
-    let imageUrl = req.body.imageUrl; // Existing URL if no new file
+
+    // Validate all required fields are present
+    const requiredFields = ['brand', 'plate', 'model', 'color', 'milage', 'price', 'capacity', 'fuel', 'year'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
     
-    if (req.file) { // Multer provides req.file for uploaded image
+    if (missingFields.length > 0) {
+      res.status(400).json({
+        message: 'Validation error',
+        errors: missingFields.reduce((acc: any, field) => {
+          acc[field] = `${field} is required`;
+          return acc;
+        }, {})
+      });
+      return;
+    }
+
+    // Handle image validation and upload
+    let imageUrl: string | undefined = undefined;
+
+    // Check for image file or URL
+    if (!req.file && !req.body.imageUrl) {
+      res.status(400).json({
+        message: 'Validation error',
+        errors: { imageUrl: 'Please provide either an image file upload (field: image) or an image URL' }
+      });
+      return;
+    }
+
+    // Handle file upload if present
+    if (req.file) {
       try {
         const uploadResult = await cloudinary.uploader.upload(req.file.path, {
           folder: 'car/profiles',
@@ -44,15 +76,19 @@ export const createCar = async (req: Request, res: Response) => {
       } catch (uploadError: any) {
         console.error('Cloudinary Upload Error:', uploadError.message);
         res.status(500).json({ message: 'Failed to upload image', error: uploadError.message });
-        return 
+        return;
       }
+    } else if (req.body.imageUrl) {
+      // Use provided imageUrl
+      imageUrl = req.body.imageUrl;
+      console.log('Using provided imageUrl:', imageUrl);
     }
 
     // Check if the car with the same plate already exists
     const existingCar = await Car.findOne({ plate });
     if (existingCar) {
       res.status(409).json({ message: 'Car with this plate already exists' });
-      return 
+      return;
     }
 
     // Create a new car with all required fields
@@ -74,7 +110,6 @@ export const createCar = async (req: Request, res: Response) => {
       message: 'Car created successfully',
       car: newCar,
     });
-    return 
   } catch (error: any) {
     console.error('Car creation error:', error);
     if (error.name === 'ValidationError') {
@@ -85,10 +120,9 @@ export const createCar = async (req: Request, res: Response) => {
           return acc;
         }, {})
       });
-      return
+      return;
     }
     res.status(500).json({ message: 'Internal server error', error: error.message });
-    return 
   }
 };
 
@@ -119,11 +153,9 @@ export const getCars = async (req: Request, res: Response) => {
       totalPages: Math.ceil(total / limit),
       totalCars: total
     });
-    return 
   } catch (error) {
     console.error("Error fetching cars:", error);
     res.status(500).json({ message: "Internal server error" });
-    return 
   }
 };
 
@@ -134,22 +166,18 @@ export const getCarById = async (req: Request, res: Response) => {
 
     if (!carId.match(/^[0-9a-fA-F]{24}$/)) {
       res.status(400).json({ message: "Invalid car ID format" });
-      return 
+      return;
     }
 
     const car = await Car.findById(carId);
     if (!car) {
       res.status(404).json({ message: "Car not found" });
-      return 
+      return;
     }
     res.status(200).json(car);
-    return 
-    
   } catch (error) {
     console.error("Error fetching car:", error);
-
     res.status(500).json({ message: "Internal server error" });
-    return 
   }
 };
 
@@ -161,7 +189,7 @@ export const updateCar = async (req: Request, res: Response) => {
 
     if (!carId.match(/^[0-9a-fA-F]{24}$/)) {
       res.status(400).json({ message: "Invalid car ID format" });
-      return 
+      return;
     }
 
     // Check if updating plate number and if it already exists
@@ -172,7 +200,7 @@ export const updateCar = async (req: Request, res: Response) => {
       });
       if (existingCar) {
         res.status(409).json({ message: 'Car with this plate already exists' });
-        return 
+        return;
       }
     }
 
@@ -193,7 +221,7 @@ export const updateCar = async (req: Request, res: Response) => {
       } catch (uploadError: any) {
         console.error('Cloudinary Upload Error:', uploadError.message);
         res.status(500).json({ message: 'Failed to upload image', error: uploadError.message });
-        return 
+        return;
       }
     }
 
@@ -205,13 +233,12 @@ export const updateCar = async (req: Request, res: Response) => {
 
     if (!updatedCar) {
       res.status(404).json({ message: "Car not found" });
-      return
+      return;
     }
     res.status(200).json({
       message: "Car updated successfully",
       car: updatedCar,
     });
-    return
   } catch (error: any) {
     console.error("Error updating car:", error);
     if (error.name === 'ValidationError') {
@@ -222,10 +249,9 @@ export const updateCar = async (req: Request, res: Response) => {
           return acc;
         }, {})
       });
-      return
+      return;
     }
-     res.status(500).json({ message: "Internal server error", error: error.message });
-    return
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
@@ -236,13 +262,13 @@ export const deleteCar = async (req: Request, res: Response) => {
 
     if (!carId.match(/^[0-9a-fA-F]{24}$/)) {
       res.status(400).json({ message: "Invalid car ID format" });
-      return 
+      return;
     }
 
     const deletedCar = await Car.findByIdAndDelete(carId);
     if (!deletedCar) {
       res.status(404).json({ message: "Car not found" });
-      return 
+      return;
     }
 
     // If the car has an image on Cloudinary, delete it
@@ -261,10 +287,8 @@ export const deleteCar = async (req: Request, res: Response) => {
       message: "Car deleted successfully",
       car: deletedCar,
     });
-    return 
   } catch (error) {
     console.error("Error deleting car:", error);
     res.status(500).json({ message: "Internal server error" });
-    return 
   }
 };
